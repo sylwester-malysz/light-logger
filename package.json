@@ -1,7 +1,7 @@
 {
-  "name": "light-logger",
+  "name": "log-keeper",
   "version": "0.1.0",
-  "description": "",
+  "description": "Simple JS logger",
   "main": "index.js",
   "scripts": {
     "test": "mocha tests",
@@ -9,7 +9,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "babel-eslint": "^10.0.3",
     "eslint": "^6.4.0",
