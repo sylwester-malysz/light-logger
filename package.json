@@ -1,5 +1,5 @@
 {
-  "name": "log-keeper",
+  "name": "@sylwester_malysz/logger",
   "version": "0.1.0",
   "description": "Simple JS logger",
   "main": "index.js",
