@@ -42,12 +42,8 @@ class Log {
       this.#nativeConsoleFunction = this.#getNativeConsoleFunction();
 
       if (printLog) {
-        const prefix = this.#prefixes.map((singlePrefix) => `${singlePrefix} `);
-        let logContent = `${this.#colorPrefix}${prefix}${this.#message}`;
-        if (printPayload && this.#payload) {
-          logContent += ` ${JSON.stringify(this.#payload)}`;
-        }
-        this.#nativeConsoleFunction(logContent);
+        const logContent = this.#defaultTemplate({ printPayload });
+        this.#printToStandardOutput({ logContent });
       }
     }
 
@@ -93,19 +89,22 @@ class Log {
       return this.#time;
     }
 
-    print({ template }) {
-      let logContent;
-      if (template) {
-        logContent = template({ log: this });
-      } else {
-        const prefix = this.#prefixes.map((singlePrefix) => `${singlePrefix} `);
-        logContent = `${this.#colorPrefix}${this.#time} ${prefix} ${this.#message}`;
-        if (this.#payload) {
-          logContent += ` ${JSON.stringify(this.#payload)}`;
-        }
-      }
-      this.#nativeConsoleFunction(logContent);
+    print({ template = null }) {
+      const logContent = (template && template({ log: this })) || this.#defaultTemplate({ printPayload: true });
+      this.#printToStandardOutput({ logContent });
     }
+
+    #printToStandardOutput = ({ logContent }) => {
+      this.#nativeConsoleFunction(logContent);
+    };
+
+    #defaultTemplate = ({ printPayload = true }) => {
+      const prefix = this.#prefixes.map((singlePrefix) => `${singlePrefix} `);
+      if (this.#payload && printPayload) {
+        return `${this.#colorPrefix}${this.#time} ${prefix} ${this.#message} ${JSON.stringify(this.#payload)}`;
+      }
+      return `${this.#colorPrefix}${this.#time} ${prefix} ${this.#message}`;
+    };
 
     #getNativeConsoleFunction = () => {
       if (this.#type === LogType.LOG) {
