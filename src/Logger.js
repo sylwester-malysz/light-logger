@@ -3,10 +3,23 @@ const LogsTail = require('./LogsTail');
 const LogType = require('./LogType');
 const Log = require('./Log');
 
-class Logger {
-    /** @type Number */
-    #maxTailSize;
+const defaultLogTemplate = ({
+  message,
+  payload,
+  time,
+  prefixes,
+  colorPrefix,
+  printPayload,
+  printTime,
+  printPrefix,
+}) => colorPrefix
+    + (printTime && `${time.toISOString()} `)
+    + (printPrefix && prefixes.map((singlePrefix) => `${singlePrefix} `))
+    + message
+    + ((printPayload && payload) ? ` ${JSON.stringify(payload)}` : '');
 
+
+class Logger {
     /** @type Array<String> */
     #prefixes;
 
@@ -19,16 +32,52 @@ class Logger {
     /** @type Boolean */
     #printLog;
 
-    /** @type Boolean */
-    #printPayload;
+    /** @type Object<Boolean> */
+    #printConfig;
 
+    /** @type Object<Function> */
+    #printFunctions = {
+      [LogType.ERROR]: console.error,
+      [LogType.INFO]: console.info,
+      [LogType.LOG]: console.log,
+    };
+
+    /** @type Function */
+    #template;
+
+    /**
+     * @param {Boolean} printLog
+     * @param {Boolean} printTime
+     * @param {Boolean} printPrefix
+     * @param {Boolean} printPayload
+     * @param maxTailSize
+     * @param {String} errorPrefixColor
+     * @param {String} infoPrefixColor
+     * @param {String} logPrefixColor
+     * @param {String[]} prefixes
+     * @param {LogsTail=} logsTail
+     * @param {Function} customTemplate
+     */
     constructor({
-      printLog = true, printPayload = true, maxTailSize = 100, errorPrefixColor = '\x1b[31m', infoPrefixColor = '\x1b[36m', logPrefixColor = '\x1b[33m', prefixes = [],
+      printLog = true,
+      printTime = true,
+      printPrefix = true,
+      printPayload = true,
+      maxTailSize = 100,
+      errorPrefixColor = '\x1b[31m',
+      infoPrefixColor = '\x1b[36m',
+      logPrefixColor = '\x1b[33m',
+      prefixes = [],
+      customTemplate,
     } = {}, logsTail = null) {
-      this.#maxTailSize = maxTailSize;
       this.#prefixes = prefixes;
       this.#printLog = printLog;
-      this.#printPayload = printPayload;
+      this.#printConfig = {
+        printPayload,
+        printTime,
+        printPrefix,
+      };
+      this.#template = customTemplate || defaultLogTemplate;
       this.#logsTail = logsTail || new LogsTail({ maxSize: maxTailSize });
       this.#colorPrefixes = {
         [LogType.ERROR]: errorPrefixColor,
@@ -38,46 +87,52 @@ class Logger {
     }
 
     #createLog = ({
-      message, payload, colorPrefix, prefixes, type,
+      message, payload, type,
     }) => {
       const log = new Log({
         message,
         payload,
-        printLog: this.#printLog,
-        printPayload: this.#printPayload,
-        colorPrefix: colorPrefix === null ? this.#colorPrefixes[type] : colorPrefix,
-        prefixes: prefixes || this.#prefixes,
         type,
+        prefixes: this.#prefixes,
       });
       this.#logsTail.add({ log });
+      if (this.#printLog) {
+        const printFunction = this.#printFunctions[type];
+        const colorPrefix = this.#colorPrefixes[type];
+        const logContent = this.#template({
+          message: log.message,
+          type: log.type,
+          time: log.time,
+          payload: log.payload,
+          prefixes: log.prefixes,
+          colorPrefix,
+          ...this.#printConfig,
+        });
+        printFunction(logContent);
+      }
     };
 
-    log(message, { payload = null, colorPrefix = null, prefixes = null } = {}) {
+
+    log(message, { payload } = {}) {
       this.#createLog({
         message,
         payload,
-        colorPrefix,
-        prefixes,
         type: LogType.LOG,
       });
     }
 
-    info(message, { payload = null, colorPrefix = null, prefixes = null } = {}) {
+    info(message, { payload } = {}) {
       this.#createLog({
         message,
         payload,
-        colorPrefix,
-        prefixes,
         type: LogType.INFO,
       });
     }
 
-    error(message, { payload = null, colorPrefix = null, prefixes = null } = {}) {
+    error(message, { payload } = {}) {
       this.#createLog({
         message,
         payload,
-        colorPrefix,
-        prefixes,
         type: LogType.ERROR,
       });
     }
@@ -103,7 +158,7 @@ class Logger {
       // eslint-disable-next-line no-use-before-define
       const forkedLogger = new LoggerFork({
         printLog: printLog === null ? this.#printLog : printLog,
-        printPayload: printPayload === null ? this.#printPayload : printPayload,
+        printPayload: printPayload === null ? this.#printConfig.printPayload : printPayload,
         errorPrefixColor: errorPrefixColor === null ? this.#colorPrefixes[LogType.ERROR] : errorPrefixColor,
         infoPrefixColor: infoPrefixColor === null ? this.#colorPrefixes[LogType.INFO] : infoPrefixColor,
         logPrefixColor: logPrefixColor === null ? this.#colorPrefixes[LogType.LOG] : logPrefixColor,
