@@ -1,4 +1,4 @@
-// eslint-disable-next-line max-classes-per-file
+/* eslint-disable class-methods-use-this */
 const LogsTail = require('./LogsTail');
 const LogType = require('./LogType');
 const Log = require('./Log');
@@ -37,8 +37,11 @@ class Logger {
 
     /** @type Object<Function> */
     #printFunctions = {
+      // eslint-disable-next-line no-console
       [LogType.ERROR]: console.error,
+      // eslint-disable-next-line no-console
       [LogType.INFO]: console.info,
+      // eslint-disable-next-line no-console
       [LogType.LOG]: console.log,
     };
 
@@ -86,94 +89,139 @@ class Logger {
       };
     }
 
+    #printSingleLog = ({ log, template }) => {
+      const printFunction = this.#printFunctions[log.type];
+      const colorPrefix = this.#colorPrefixes[log.type];
+      const templateFn = template || this.#template;
+      const logContent = templateFn({
+        message: log.message,
+        type: log.type,
+        time: log.time,
+        payload: log.payload,
+        prefixes: log.prefixes,
+        colorPrefix,
+        ...this.#printConfig,
+      });
+      printFunction(logContent);
+    };
+
     #createLog = ({
-      message, payload, type,
+      message, payload, fullPayload, type,
     }) => {
       const log = new Log({
         message,
         payload,
+        fullPayload,
         type,
         prefixes: this.#prefixes,
       });
       this.#logsTail.add({ log });
       if (this.#printLog) {
-        const printFunction = this.#printFunctions[type];
-        const colorPrefix = this.#colorPrefixes[type];
-        const logContent = this.#template({
-          message: log.message,
-          type: log.type,
-          time: log.time,
-          payload: log.payload,
-          prefixes: log.prefixes,
-          colorPrefix,
-          ...this.#printConfig,
-        });
-        printFunction(logContent);
+        this.#printSingleLog({ log });
       }
     };
 
-
-    log(message, { payload } = {}) {
+    #log = (message, { payload, fullPayload } = {}) => {
       this.#createLog({
         message,
         payload,
+        fullPayload,
         type: LogType.LOG,
       });
     }
 
-    info(message, { payload } = {}) {
+    #info = (message, { payload, fullPayload } = {}) => {
       this.#createLog({
         message,
         payload,
+        fullPayload,
         type: LogType.INFO,
       });
-    }
+    };
 
-    error(message, { payload } = {}) {
+    #error = (message, { payload, fullPayload } = {}) => {
       this.#createLog({
         message,
         payload,
+        fullPayload,
         type: LogType.ERROR,
       });
-    }
+    };
 
     /**
      *
      * @returns {Log[]}
      */
-    getLogs() {
-      return [...this.#logsTail.get()];
-    }
+    #getLogs = () => [...this.#logsTail.get()];
 
     /**
      * @param {Function} template
      */
-    printLogsStack({ template = null } = {}) {
-      this.#logsTail.get().map((log) => log.print({ template }));
-    }
+    #printLogsStack = ({ template = null } = {}) => {
+      this.#logsTail.get().map((log) => this.#printSingleLog({ log, template }));
+    };
 
-    fork({
+    #fork = ({
       extraPrefixes = [], errorPrefixColor = null, infoPrefixColor = null, logPrefixColor = null, prefixes = null, printLog = null, printPayload = null,
-    }) {
+    } = {}) => {
       // eslint-disable-next-line no-use-before-define
-      const forkedLogger = new LoggerFork({
+      const forkedLogger = new Logger({
         printLog: printLog === null ? this.#printLog : printLog,
         printPayload: printPayload === null ? this.#printConfig.printPayload : printPayload,
         errorPrefixColor: errorPrefixColor === null ? this.#colorPrefixes[LogType.ERROR] : errorPrefixColor,
         infoPrefixColor: infoPrefixColor === null ? this.#colorPrefixes[LogType.INFO] : infoPrefixColor,
         logPrefixColor: logPrefixColor === null ? this.#colorPrefixes[LogType.LOG] : logPrefixColor,
         prefixes: [...(prefixes || this.#prefixes), ...extraPrefixes],
-      }, this.#logsTail);
+      }, this.#logsTail.fork());
       return forkedLogger;
+    };
+
+    get log() {
+      return this.#log;
     }
-}
 
-class LoggerFork extends Logger {
-    #logsTail;
+    set log(_val) {
+      throw new Error('"log" attr is reserved. Cannot be used as sublogger');
+    }
 
-    constructor(loggerParams, logsTail) {
-      super(loggerParams);
-      this.#logsTail = logsTail;
+    get info() {
+      return this.#info;
+    }
+
+    set info(_val) {
+      throw new Error('"info" attr is reserved. Cannot be used as sublogger');
+    }
+
+    get error() {
+      return this.#error;
+    }
+
+    set error(_val) {
+      throw new Error('"error" attr is reserved. Cannot be used as sublogger');
+    }
+
+    get fork() {
+      return this.#fork;
+    }
+
+    set fork(_val) {
+      throw new Error('"fork" attr is reserved. Cannot be used as sublogger');
+    }
+
+    get printLogsStack() {
+      return this.#printLogsStack;
+    }
+
+    set printLogsStack(_val) {
+      throw new Error('"printLogsStack" attr is reserved. Cannot be used as sublogger');
+    }
+
+    get getLogs() {
+      return this.#getLogs;
+    }
+
+    set getLogs(_val) {
+      throw new Error('"getLogs" attr is reserved. Cannot be used as sublogger');
     }
 }
 

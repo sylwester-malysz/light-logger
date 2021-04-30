@@ -3,7 +3,7 @@
  */
 
 /**
- * class LoggerStore
+ * class LogsTail
  */
 class LogsTail {
     /** @type Array<Log> */
@@ -12,9 +12,13 @@ class LogsTail {
     /** @type Number */
     #maxSize;
 
+    /** @type LogsTail */
+    #parentLogsTail;
 
-    constructor({ maxSize }) {
+
+    constructor({ maxSize }, parentLogsTail = null) {
       this.#maxSize = maxSize;
+      this.#parentLogsTail = parentLogsTail;
     }
 
     /**
@@ -25,6 +29,13 @@ class LogsTail {
         this.#logs.shift();
       }
       this.#logs.push(log);
+      if (this.#parentLogsTail) {
+        this.#parentLogsTail.add({ log });
+      }
+    }
+
+    fork({ maxSize = this.#maxSize } = {}) {
+      return new LogsTail({ maxSize }, this);
     }
 
 

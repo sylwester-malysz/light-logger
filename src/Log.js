@@ -34,6 +34,14 @@ class Log {
       return this.#payload;
     }
 
+    /** @type Object */
+    #fullPayload;
+
+    /** @returns {Object} */
+    get fullPayload() {
+      return this.#fullPayload;
+    }
+
     /** @type Date */
     #time;
 
@@ -46,11 +54,13 @@ class Log {
       message,
       type,
       payload,
+      fullPayload,
       prefixes,
     }) {
       this.#message = message;
       this.#type = type;
       this.#payload = payload;
+      this.#fullPayload = fullPayload;
       this.#prefixes = prefixes;
       this.#time = new Date();
     }
